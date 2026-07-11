@@ -12,7 +12,8 @@
 
 1. **[Спецификация требований к веб-приложению Chatty для второго релиза](https://github.com/EfimovaJA/Portfolio/blob/main/project%201)** — Описаны сценарии использования в табличной форме и в виде диаграммы, функциональных требований, атрибутов качества, бизнес-правил, глоссария. [Use Case Diagram UML:графическая, табличная форма]
 2. **[Моделирование данных и работа с базой данных интернет-магазина «Накарабине»](https://github.com/EfimovaJA/Portfolio/blob/main/%D0%A1%D0%BF%D0%B5%D1%86%D0%B8%D1%84%D0%B8%D0%BA%D0%B0%D1%86%D0%B8%D1%8F%20%D1%82%D1%80%D0%B5%D0%B1%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B9%20%D0%BA%20%D0%9F%D0%9E%20%D0%9D%D0%B0%D0%BA%D0%B0%D1%80%D0%B0%D0%B1%D0%B8%D0%BD%D0%B5.docx)** — Разработана логическая модель данных и словарь данных, используя нотацию Crow’s Foot и нормализацию до 3НФ. (ER-диаграмма в нотации Мартина, нормализация БД).
-3. **[Бэклог приложения для сети клиник «Вита»](https://github.com/EfimovaJA/Portfolio/blob/main/project%203)** — Песочница с примерами сложных аналитических SQL-запросов и спроектированной схемой данных по методологии Data Vault 2.0.
+3. **[Бэклог приложения для сети клиник «Вита»](https://github.com/EfimovaJA/Portfolio/blob/main/project%203)** — Разработана User Story Map (USM) приложения «Вита», определен MVP. Созданы прототипы и DFD для MVP.	(User Stories, Job Stories, User Story Map, DFD:контекстная и логическая, Figma, UX проектирование, прототипы)
+4. **[Разработка API для сервиса Otium](https://github.com/EfimovaJA/Portfolio/blob/main/project%204)** 
 
 ### 📫 Как со мной связаться
 - **Telegram:** [@jjilia] 
