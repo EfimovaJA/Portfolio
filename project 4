@@ -1,0 +1,253 @@
+# Техническое задание: Расширение API и внедрение сортировки по рейтингу критиков для сервиса Otium
+Интервью с заказчиком: https://docs.google.com/document/d/1OPPAd6BRA08_5jBsA65BpBLAexVaxaxFwXypYHenlaI/edit?tab=t.0#heading=h.x6b7r9e0at43
+
+
+## 1. Контекст и цель проекта
+На основе требований бизнеса необходимо расширить функционал выбора контента в стриминговом сервисе Otium. 
+
+**Бизнес-цель:** Предоставить пользователям возможность выбора фильмов и сериалов на основе профессиональной оценки («экспертного мнения»).
+**Задачи аналитика:** * Интегрировать атрибут «Рейтинг кинокритиков» в существующие сущности без изменения структуры БД.
+* Спроектировать логику фильтрации и последующей сортировки списков контента на уровне API Gateway / Web Server.
+
+---
+
+## 2. Сценарий использования (Use Case) и логика системы
+1. Пользователь переходит в раздел «Библиотека».
+2. Пользователь выбирает параметры фильтрации (например, по жанру) и/или указывает режим сортировки.
+3. Система возвращает отфильтрованный и отсортированный список контента.
+
+### Бизнес-правила сортировки контента:
+* Поддерживается сортировка по пользовательскому рейтингу (`rating`) и рейтингу критиков (`criticsRating`).
+* Направление сортировки: по возрастанию (`asc`) и по убыванию (`desc`).
+* **Обработка Null-значений:** Контент без рейтинга кинокритиков должен сохраняться в поисковой выдаче и **всегда отображаться в конце списка**, независимо от выбранного направления сортировки (`asc` / `desc`).
+
+
+## 3. Сводный реестр изменений API
+
+| Компонент / Сервер | Метод | Эндпоинт | Тип изменения | Описание изменения |
+| :--- | :--- | :--- | :--- | :--- |
+| **Films Server** | `GET` | `/films/list` | Изменение Response | Добавлено опциональное поле `criticsRating` в объект фильма. |
+| **Films Server** | `GET` | `/films` | Изменение Response | Добавлено опциональное поле `criticsRating` в карточку фильма. |
+| **Series Server** | `GET` | `/series/list` | Изменение Response | Добавлено опциональное поле `criticsRating` в объект сериала. |
+| **Series Server** | `GET` | `/series` | Изменение Response | Добавлено опциональное поле `criticsRating` в карточку сериала. |
+| **Web Server** | `GET` | `/content/list` | Изменение Request | Добавлены Query-параметры `sortBy` и `direction`. |
+| **Web Server** | `GET` | `/content/list` | Изменение Response | Добавлено опциональное поле `criticsRating` в массив выдачи. |
+| **Web Server** | `GET` | `/content/details`| Изменение Response | Добавлено опциональное поле `criticsRating` в детальную карточку. |
+
+
+## 4. Спецификация доработки эндпоинтов (Contracts)
+
+### 4.1. Слой Downstream (Films & Series Servers)
+
+Все методы возвращают обновленный объект контента. Спецификация нового поля для всех четырех эндпоинтов Бэкенда (`/films/list`, `/films`, `/series/list`, `/series`):
+
+* **Имя поля:** `criticsRating`
+* **Тип данных:** `number` (float)
+* **Обязательность:** Необязательный (Опциональный)
+* **Валидация:** Значения от `0.0` до `10.0`
+
+#### Пример ответа GET `/films/list`
+```json
+[
+  {
+    "id": 101,
+    "type": "film",
+    "title": "Хосэ Каньон",
+    "description": "Хосэ Каньон — добрый и открытый парень — устроился в офис электриком и рассказывает коллегам историю своей необыкновенной жизни.",
+    "imageUrl": "[https://otium.imagestorage.ru/JoseCanyon.img](https://otium.imagestorage.ru/JoseCanyon.img)",
+    "previewUrl": "[https://otium.previewstorage.ru/JoseCanyon.mov](https://otium.previewstorage.ru/JoseCanyon.mov)",
+    "recordUrl": "[https://otium.recordstorage.ru/JoseCanyon.mov](https://otium.recordstorage.ru/JoseCanyon.mov)",
+    "genre": ["comedy"],
+    "recommended": true,
+    "details": {
+      "yearOfIssue": "1995",
+      "duration": 152,
+      "country": ["США"],
+      "ageRate": "16+"
+    },
+    "rating": 9.4,
+    "criticsRating": 7.4
+  }
+]
+
+
+Пример ответа GET /films
+JSON
+{
+  "id": 101,
+  "type": "film",
+  "title": "Хосэ Каньон",
+  "description": "Хосэ Каньон — добрый и открытый парень — устроился в офис электриком и рассказывает коллегам историю своей необыкновенной жизни.",
+  "imageUrl": "[https://otium.imagestorage.ru/JoseCanyon.img](https://otium.imagestorage.ru/JoseCanyon.img)",
+  "previewUrl": "[https://otium.previewstorage.ru/JoseCanyon.mov](https://otium.previewstorage.ru/JoseCanyon.mov)",
+  "recordUrl": "[https://otium.recordstorage.ru/JoseCanyon.mov](https://otium.recordstorage.ru/JoseCanyon.mov)",
+  "genre": ["comedy"],
+  "recommended": true,
+  "details": {
+    "yearOfIssue": "1995",
+    "duration": 152,
+    "country": ["США"],
+    "ageRate": "16+"
+  },
+  "language": {
+    "original": ["английский"],
+    "sound": ["русский", "английский"],
+    "subtitle": ["русский", "английский"]
+  },
+  "team": {
+    "cast": ["Джон Джэксон", "Джулия Блэйк"],
+    "dubbingTeam": ["Дэвид Браун"]
+  },
+  "rating": 9.4,
+  "criticsRating": 7.4
+}
+
+
+
+Пример ответа GET /series/list
+JSON
+[
+  {
+    "id": 205,
+    "type": "series",
+    "title": "Загадка города Эльдорадо",
+    "description": "Географа подозревают в написании книги, которую он не писал. Герой знакомится с журналисткой мексиканской газеты Глорией, вместе они пытаются раскрыть тайну мифического города.",
+    "imageUrl": "[https://otium.imagestorage.ru/MysteryOfEldorado.img](https://otium.imagestorage.ru/MysteryOfEldorado.img)",
+    "previewUrl": "[https://otium.previewstorage.ru/MysteryOfEldorado.mov](https://otium.previewstorage.ru/MysteryOfEldorado.mov)",
+    "recordUrl": "[https://otium.recordstorage.ru/MysteryOfEldorado.mov](https://otium.recordstorage.ru/MysteryOfEldorado.mov)",
+    "genre": ["action"],
+    "recommended": true,
+    "rating": 6.5,
+    "criticsRating": 7.4
+  }
+]
+
+
+Пример ответа GET /series
+JSON
+{
+  "id": 205,
+  "type": "series",
+  "title": "Загадка города Эльдорадо",
+  "description": "Географа подозревают в написании книги, которую он не писал. Герой знакомится с журналисткой мексиканской газеты Глорией, вместе они пытаются раскрыть тайну мифиечкого города.",
+  "imageUrl": "[https://otium.imagestorage.ru/MysteryOfEldorado.img](https://otium.imagestorage.ru/MysteryOfEldorado.img)",
+  "previewUrl": "[https://otium.previewstorage.ru/MysteryOfEldorado.mov](https://otium.previewstorage.ru/MysteryOfEldorado.mov)",
+  "recordUrl": "[https://otium.recordstorage.ru/MysteryOfEldorado.mov](https://otium.recordstorage.ru/MysteryOfEldorado.mov)",
+  "genre": ["action"],
+  "recommended": true,
+  "details": {
+    "yearOfIssue": "2007",
+    "episodesCount": 12,
+    "country": ["Великобритания, Турция, США"],
+    "ageRate": "12+"
+  },
+  "language": {
+    "original": ["английский, турецкий"],
+    "sound": ["русский, английский"],
+    "subtitle": ["русский, английский, турецкий"]
+  },
+  "rating": 6.5,
+  "criticsRating": 7.4
+}
+
+
+GET /content/list — Получение отсортированного списка контента
+Query Parameters:
+
+sortBy (string, optional) — Параметр, по которому выполняется сортировка.
+
+Варианты значений: rating (пользовательский рейтинг), criticsRating (рейтинг кинокритиков).
+
+direction (string, optional) — Направление сортировки внутри массива.
+
+Варианты значений: asc (по возрастанию), desc (по убыванию).
+
+
+Пример ответа (Сортировка по возрастанию criticsRating, элементы с null в конце):
+JSON
+[
+  {
+    "id": 201,
+    "type": "serie",
+    "title": "Индийский океан и я",
+    "description": "Погрузитесь в веселые приключения на берегу Индийского океана, где дети вместе с местными животными учатся ценить природу и дружбу.",
+    "imageUrl": "[https://otium.imagestorage.ru/IndianOcean&I.img](https://otium.imagestorage.ru/IndianOcean&I.img)",
+    "previewUrl": "[https://otium.previewstorage.ru/IndianOcean&I.mov](https://otium.previewstorage.ru/IndianOcean&I.mov)",
+    "recordUrl": "[https://otium.recordstorage.ru/IndianOcean&I.mov](https://otium.recordstorage.ru/IndianOcean&I.mov)",
+    "genre": ["kids"],
+    "recommended": false,
+    "details": {
+      "yearOfIssue": "2015",
+      "episodesCount": 4,
+      "country": ["Индонезия"],
+      "ageRate": "6+"
+    },
+    "rating": 7.5,
+    "criticsRating": 7.4
+  },
+  {
+    "id": 101,
+    "type": "film",
+    "title": "Хосе Каньон",
+    "description": "Хосе Каньон — добрый и открытый парень — устроился в офис электриком и рассказывает коллегам историю своей необыкновенной жизни.",
+    "imageUrl": "[https://otium.imagestorage.ru/JoseCanyon.img](https://otium.imagestorage.ru/JoseCanyon.img)",
+    "previewUrl": "[https://otium.previewstorage.ru/JoseCanyon.mov](https://otium.previewstorage.ru/JoseCanyon.mov)",
+    "recordUrl": "[https://otium.recordstorage.ru/JoseCanyon.mov](https://otium.recordstorage.ru/JoseCanyon.mov)",
+    "genre": ["comedy"],
+    "recommended": true,
+    "details": {
+      "yearOfIssue": "1995",
+      "duration": 152,
+      "country": ["США"],
+      "ageRate": "16+"
+    },
+    "rating": 9.4,
+    "criticsRating": 8.5
+  },
+  {
+    "id": 104,
+    "type": "film",
+    "title": "Ребус Атлантиды",
+    "description": "Контент без рейтинга критиков сохраняется в выдаче, но сдвигается в самый конец списка.",
+    "genre": ["thriller"],
+    "rating": 6.5,
+    "criticsRating": null
+  }
+]
+
+
+GET /content/details — Получение детальной карточки контента
+Пример запроса: GET {{WebServer}}/content/details?type=film&id=104
+
+Изменение схемы ответа: В тело ответа на корневой уровень добавлен опциональный атрибут criticsRating (number).
+
+Пример ответа:
+JSON
+{
+  "id": "104",
+  "type": "film",
+  "title": "Ребус Атлантиды",
+  "description": "Археолога подозревают в преступлении, которого он не совершал. Герой знакомится с историком турецкой полиции Шехер Джан, вместе они пытаются раскрыть тайну.",
+  "imageUrl": "[https://otium.imagestorage.ru/RebusOfAtlantis.img](https://otium.imagestorage.ru/RebusOfAtlantis.img)",
+  "previewUrl": "[https://otium.previewstorage.ru/RebusOfAtlantis.mov](https://otium.previewstorage.ru/RebusOfAtlantis.mov)",
+  "recordUrl": "[https://otium.recordstorage.ru/RebusOfAtlantis.mov](https://otium.recordstorage.ru/RebusOfAtlantis.mov)",
+  "genre": ["thriller", "mystery"],
+  "recommended": true,
+  "details": {
+    "yearOfIssue": "2007",
+    "duration": 159,
+    "country": ["Великобритания, Турция, США"],
+    "ageRate": "12+"
+  },
+  "language": {
+    "original": ["английский, турецкий"],
+    "sound": ["русский, английский"],
+    "subtitle": ["русский, английский, турецкий"]
+  },
+  "team": {
+    "cast": ["Джон Джэксон, Айше Болат"],
+    "dubbingTeam": [null]
+  },
+  "rating": 6.5,
+  "criticsRating": 7.4
+}
